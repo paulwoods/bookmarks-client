@@ -1,44 +1,102 @@
 import React, {Component} from 'react';
 import './App.css';
+import Reboot from 'material-ui/Reboot';
+import Icon from 'material-ui/Icon';
+
+import AppBar from 'material-ui/AppBar';
+import Toolbar from 'material-ui/Toolbar';
+import Typography from 'material-ui/Typography';
+import Button from 'material-ui/Button';
+import IconButton from 'material-ui/IconButton';
+import MenuIcon from 'material-ui-icons/Menu';
+
+import Table, {TableBody, TableCell, TableHead, TableRow} from 'material-ui/Table';
+import Paper from 'material-ui/Paper';
 
 class App extends Component {
-
-    static api = 'http://localhost:8080';
 
     state = {
         bookmarks: []
     };
 
-    constructor() {
+    api = 'https://mrpaulwoods.org/api';
 
-        super();
+    constructor(props) {
+        super(props);
 
         this.handleUpVote = this.handleUpVote.bind(this);
         this.handleDownVote = this.handleDownVote.bind(this);
-        this.handleAddBookmark = this.handleAddBookmark.bind(this);
+        this.replaceBookmark = this.replaceBookmark.bind(this);
     }
 
     componentDidMount() {
-
-        fetch(App.api + '/bookmark')
+        fetch(this.api + '/bookmark', {method: 'GET', mode: 'cors'})
             .then(response => response.json())
             .then(json => this.setState({bookmarks: json}))
             .catch(error => console.error(error));
     }
 
     render() {
+
+        const bookmarks = this.state.bookmarks.map(bookmark => {
+            return (
+                <TableRow key={bookmark.id} hover={true}>
+                    <TableCell density="dense"><a target="_blank" href={bookmark.url}>{bookmark.name} [{bookmark.votes}]</a></TableCell>
+                    <TableCell><Icon id={bookmark.id} onClick={this.handleUpVote}>thumb_up</Icon></TableCell>
+                    <TableCell><Icon id={bookmark.id} onClick={this.handleDownVote}>thumb_down</Icon></TableCell>
+                </TableRow>
+            );
+        });
+
         return (
             <div>
-                <Bookmarks
-                    bookmarks={this.state.bookmarks}
-                    onUpVote={this.handleUpVote}
-                    onDownVote={this.handleDownVote}
-                />
-                <AddBookmark
-                    onAddBookmark={this.handleAddBookmark}
-                />
+                <Reboot/>
+
+                <AppBar position="static">
+                    <Toolbar>
+                        <IconButton color="inherit" aria-label="Menu">
+                            <MenuIcon/>
+                        </IconButton>
+                        <Typography variant="title" color="inherit">
+                            Bookmarks
+                        </Typography>
+                        <Button color="inherit">Login</Button>
+                    </Toolbar>
+                </AppBar>
+
+                <Paper>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>Name</TableCell>
+                                <TableCell>Up Vote</TableCell>
+                                <TableCell>Down Vote</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {bookmarks}
+                        </TableBody>
+                    </Table>
+                </Paper>
+
             </div>
         );
+    }
+
+    handleUpVote(e) {
+        const id = e.target.id;
+        fetch(this.api + '/bookmark/' + id + '/up', {method: 'POST', mode: 'cors'})
+            .then(response => response.json())
+            .then(bookmark => this.replaceBookmark(this.state.bookmarks, bookmark))
+            .catch(error => alert(error));
+    }
+
+    handleDownVote(e) {
+        const id = e.target.id;
+        fetch(this.api + '/bookmark/' + id + '/down', {method: 'POST', mode: 'cors'})
+            .then(response => response.json())
+            .then(bookmark => this.replaceBookmark(this.state.bookmarks, bookmark))
+            .catch(error => alert(error));
     }
 
     replaceBookmark(bookmarks, bookmark) {
@@ -54,134 +112,6 @@ class App extends Component {
 
             return prevState
         });
-    }
-
-    handleUpVote(bookmark) {
-        fetch(App.api + '/bookmark/' + bookmark.id + '/up', {method: 'POST', mode: 'cors'})
-            .then(response => response.json())
-            .then(bookmark => this.replaceBookmark(this.state.bookmarks, bookmark))
-            .catch(error => console.error(error));
-    }
-
-    handleDownVote(bookmark) {
-        fetch(App.api + '/bookmark/' + bookmark.id + '/down', {method: 'POST', mode: 'cors'})
-            .then(response => response.json())
-            .then(bookmark => this.replaceBookmark(this.state.bookmarks, bookmark))
-            .catch(error => console.error(error));
-    }
-
-    handleAddBookmark(name, url) {
-        console.log('handleAddBookmark', name, url);
-
-        const body = JSON.stringify({
-            name: name,
-            url: url
-        });
-
-        fetch(App.api + '/bookmark/', {
-            method: 'POST',
-            mode: 'cors',
-            body: body,
-            headers: new Headers({
-                'Content-Type': 'application/json'
-            })
-        })
-            .then(response => response.json())
-            .then(bookmark => {
-                let bookmarks = this.state.bookmarks.slice();
-                bookmarks.push(bookmark);
-                this.setState({bookmarks: bookmarks});
-            })
-            .catch(error => console.error(error));
-    }
-
-}
-
-class Bookmarks extends Component {
-
-    render() {
-
-        const bookmarks = this.props.bookmarks.map((bookmark) =>
-            <Bookmark
-                key={bookmark.name}
-                bookmark={bookmark}
-                onUpVote={this.props.onUpVote}
-                onDownVote={this.props.onDownVote}
-            />
-        );
-
-        return (
-            <ul style={{'listStyle': 'none'}}>{bookmarks}</ul>
-        );
-    }
-}
-
-class Bookmark extends Component {
-
-    constructor(props) {
-
-        super(props);
-
-        this.handleUpVote = this.handleUpVote.bind(this);
-        this.handleDownVote = this.handleDownVote.bind(this);
-    }
-
-    handleUpVote(e) {
-        e.preventDefault();
-        this.props.onUpVote(this.props.bookmark);
-    }
-
-    handleDownVote(e) {
-        e.preventDefault();
-        this.props.onDownVote(this.props.bookmark);
-    }
-
-    render() {
-        return (
-            <li key={this.props.bookmark.name}>
-                <i className='fas fa-link'/>
-                &nbsp;
-                <a target='_blank' href={this.props.bookmark.url}>{this.props.bookmark.name}</a>
-                &nbsp;
-                <a onClick={this.handleUpVote}><i className='far fa-thumbs-up'/></a>
-                &nbsp;
-                {this.props.bookmark.votes}
-                &nbsp;
-                <a onClick={this.handleDownVote}><i className='far fa-thumbs-down'/></a>
-            </li>
-        );
-
-    }
-}
-
-class AddBookmark extends Component {
-
-    constructor(props) {
-        super(props);
-        this.handleFormSubmit = this.handleFormSubmit.bind(this);
-    }
-
-    handleFormSubmit(e) {
-        e.preventDefault();
-        this.props.onAddBookmark(this.refs.name.value, this.refs.url.value);
-    }
-
-    render() {
-        return (
-            <form onSubmit={this.handleFormSubmit}>
-                <div className='form-group'>
-                    <label htmlFor='name'>Name</label>
-                    <input type='text' className='form-control' id='name' ref='name'/>
-                    <small id='nameHelp' className='form-text text-muted'>Enter a name for the bookmark</small>
-                </div>
-                <div className='form-group'>
-                    <label htmlFor='url'>URL</label>
-                    <input type='url' className='form-control' id='url' ref='url'/>
-                    <small id='nameHelp' className='form-text text-muted'>http://www.example.com</small>
-                </div>
-                <button type='submit' className='btn btn-primary'>Add Bookmark</button>
-            </form>
-        );
     }
 
 }
